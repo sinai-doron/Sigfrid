@@ -1,0 +1,50 @@
+{
+  "name": "MYEONG",
+  "version": "0.0.0",
+  "description": "TV show tracker",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinai-doron/MYEONG.git"
+  },
+  "keywords": [
+    "tv",
+    "show",
+    "tracker",
+    "angular",
+    "node",
+    "npm",
+    "rest",
+    "express"
+  ],
+  "author": "Doron Sinai",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sinai-doron/MYEONG/issues"
+  },
+  "homepage": "https://github.com/sinai-doron/MYEONG",
+  "dependencies": {
+      "body-parser": "^1.7.0",
+      "compression": "^1.0.11",
+      "connect-redis": "^2.1.0",
+      "cookie-parser": "^1.3.2",
+      "csurf": "^1.6.1",
+      "cynwrig": "0.0.3",
+      "express": "^4.8.7",
+      "express-logger": "0.0.3",
+      "express-session": "^1.7.6",
+      "express3-handlebars": "^0.5.2",
+      "log4js": "^0.6.20",
+      "mongoose": "^3.8.15",
+      "morgan": "^1.3.0",
+      "node-uuid": "^1.4.1",
+      "passport": "^0.2.1",
+      "passport-google-oauth": "^0.1.5",
+      "redis": "^0.12.1",
+      "winston": "^0.7.3"
+  }
+}
