@@ -1,0 +1,27 @@
+<div class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" ng-show="title">
+                <button type="button" class="close" ng-click="$hide()">&times;</button>
+                <h4 class="modal-title" ng-bind-html="title"></h4>
+            </div>
+            <div class="modal-body" ng-show="content">
+                <!--<p ng-bind-html="content"></p>-->
+                <div class="animate-repeat banner" ng-repeat="s in series" ng-click="chooseShow(s)">
+                    <div style="background-image: url('http://thetvdb.com/banners/{{s.banner}}')" ng-if="s.banner"></div>
+                    <div style="background-color: #ffffff" ng-if="!s.banner" >{{s.seriesname}}</div>
+                </div>
+                <!--<ul>-->
+                    <!--<li class="animate-repeat" ng-repeat="s in series">-->
+                        <!--<img style="width:50%; height:50%" src="http://thetvdb.com/banners/{{s.banner}}" alt="{{s.seriesname}}" />-->
+                    <!--</li>-->
+                <!--</ul>-->
+                <!--<p>This <a href="#" role="button" class="btn btn-default popover-test" data-title="A Title" data-content="And here's some amazing content. It's very engaging. right?" bs-popover>button</a> should trigger a popover on click.</p>-->
+                <!--<p><a href="#" class="tooltip-test" data-title="Tooltip" bs-tooltip>This link</a> and <a href="#" class="tooltip-test" data-title="Tooltip" bs-tooltip>that link</a> should have tooltips on hover.</p>-->
+            </div>
+            <!--<div class="modal-footer">-->
+                <!--<button type="button" class="btn btn-default" ng-click="$hide()">Close</button>-->
+            <!--</div>-->
+        </div>
+    </div>
+</div>

@@ -45,16 +45,20 @@
 
     <div class="panel panel-default">
         <div class="panel-heading">
-            <span class="glyphicon glyphicon-play"></span> Episodes
+            <span ng-click="all = false"><span class="glyphicon glyphicon-play" ></span> Unwatched Episodes</span>
+            <span ng-click="all = true"><span class="glyphicon glyphicon-play" ></span> All Episodes</span>
+            <span class="glyphicon glyphicon-play" ></span>
+            <span ng-repeat="season in seasonsRange" style="margin-right: 10px" ><span ng-click="changeSeason(season)" >{{season}}</span></span>
         </div>
         <div class="panel-body">
-            <div class="episode" ng-repeat="episode in show.episodes">
-                <h4>{{episode.episodeName}}
+            <div class="episode" ng-repeat="episode in show.episodes | showWatched:all">
+                <h4 style="color: {{episode.color}}">{{episode.episodeName}}
                     <small>Season {{episode.season}}, Episode {{episode.episodeNumber}}</small>
                 </h4>
                 <p>
                     <span class="glyphicon glyphicon-calendar"></span>
                     {{episode.firstAired | date: 'short'}}
+                    <input type="checkbox" ng-model="episode.watched" ng-change="updateEpisode(episode._id, episode.watched,episode)">
                 </p>
                 <p>{{episode.overview}}</p>
             </div>

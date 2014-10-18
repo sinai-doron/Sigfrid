@@ -38,17 +38,22 @@ var showSchema = new mongoose.Schema({
     ratingCount: Number,
     status: String,
     poster: String,
+    link: String,
     subscribers: [{
         type: mongoose.Schema.Types.ObjectId, ref: 'User'
     }],
-    episodes: [{
-        season: Number,
-        episodeNumber: Number,
-        episodeName: String,
-        firstAired: Date,
-        overview: String
-    }]
+    episodes: [ {type: mongoose.Schema.Types.ObjectId, ref: 'Episode'} ]
 });
+
+var episodeSchema = {
+    showId: Number,
+    season: Number,
+    episodeNumber: Number,
+    episodeName: String,
+    firstAired: Date,
+    overview: String,
+    watched: Boolean
+}
 
 var userSchema = new mongoose.Schema({
     email: { type: String, unique: true },
@@ -77,7 +82,11 @@ userSchema.methods.comparePassword = function(candidatePassword, cb) {
 
 var User = mongoose.model('User', userSchema);
 var Show = mongoose.model('Show', showSchema);
-mongoose.connect('mongodb://localhost/tvdb');
+var Episode = mongoose.model('Episode', episodeSchema);
+var options = {
+    server: { poolSize: 50 }
+}
+mongoose.connect('mongodb://localhost/tvdb',options);
 
 var app = express();
 app.set('port', process.env.PORT || 9999);
@@ -130,7 +139,7 @@ app.get('/api/shows', function(req, res, next) {
     } else if (req.query.alphabet) {
         query.where({ name: new RegExp('^' + '[' + req.query.alphabet + ']', 'i') });
     } else {
-        query.limit(12);
+        query.limit(120);
     }
     query.exec(function(err, shows) {
         if (err) return next(err);
@@ -139,26 +148,67 @@ app.get('/api/shows', function(req, res, next) {
 });
 
 app.get('/api/shows/:id', function(req, res, next) {
-    Show.findById(req.params.id, function(err, show) {
-        if (err) return next(err);
-        res.send(show);
-    });
+    Show.findById(req.params.id)
+        .populate('episodes')
+        .exec(function(err, show) {
+            if (err) return next(err);
+            res.send(show);
+        });
 });
+app.put('/api/episodes/:id', function(req, res, next){
 
+    Episode.findById(req.params.id,function(err,episode){
+        if (err){
+            console.log('Error' + err);
+            return next(err);
+        }
+        episode.watched = req.body.watched;
+        console.log('done ' + episode._id);
+        episode.save(function(err,user){
+            if(err) console.log(err);
+            console.log('User saved:', user);
+            res.send(200);
+        });
+    })
+})
+app.put('/api/shows/:id/season/:number', function(req, res, next){
+    Episode.find({
+        showId:req.params.id,
+        season:req.params.number
+    },function(err,episodes){
+       if(err) res.status(500).send('Unsuccessful');
+        console.log(episodes);
+        _.each(episodes, function(episode) {
+            episode.watched = true;
+            episode.save(function(err,episode){
+                if(err) res.status(500).send('Unsuccessful');
+            });
+        });
+        res.status(200).send('OK');
+    });
+})
 app.post('/api/shows', function(req, res, next) {
     var apiKey = '94110B1EA4F695E8'; //API key from the tv db
     var parser = xml2js.Parser({
         explicitArray: false,
         normalizeTags: true
     });
-    console.log(req.body);
     var seriesName = req.body.showName
         .toLowerCase()
         .replace(/ /g, '_')
         .replace(/[^\w-]+/g, '');
-
+    if(req.body.seriesId){
+        var responseSeriesId = req.body.seriesId
+    }
+    else{
+        responseSeriesId = null;
+    }
     async.waterfall([
         function(callback) {
+            if(responseSeriesId){
+                callback(null, responseSeriesId);
+                return;
+            }
             request.get('http://thetvdb.com/api/GetSeries.php?seriesname=' + seriesName, function(error, response, body) {
                 if (error) return next(error);
                 parser.parseString(body, function(err, result) {
@@ -166,7 +216,7 @@ app.post('/api/shows', function(req, res, next) {
                         return res.send(404, { message: req.body.showName + ' was not found.' });
                     }
                     else if (result.data.series.length > 1){
-                        return res.send(405, {message: req.body.showName + ' Matches too many results'})
+                        return res.send(430, {message: req.body.showName + ' Matches too many results', data:result.data.series})
                     }
                     var seriesId = result.data.series.seriesid || result.data.series[0].seriesid;
                     callback(err, seriesId);
@@ -179,6 +229,24 @@ app.post('/api/shows', function(req, res, next) {
                 parser.parseString(body, function(err, result) {
                     var series = result.data.series;
                     var episodes = result.data.episode;
+                    var showEpisodes = []
+                    _.each(episodes, function(episode) {
+                        var newEpisode = new Episode({
+                            showId:series.id,
+                            season: episode.seasonnumber,
+                            episodeNumber: episode.episodenumber,
+                            episodeName: episode.episodename,
+                            firstAired: episode.firstaired,
+                            overview: episode.overview,
+                            watched: false
+                        })
+                        showEpisodes.push(newEpisode._id);
+                        newEpisode.save(function(err) {
+                            if (err) {
+                                console.log(err);
+                            }
+                        });
+                    });
                     var show = new Show({
                         _id: series.id,
                         name: series.seriesname,
@@ -193,16 +261,7 @@ app.post('/api/shows', function(req, res, next) {
                         runtime: series.runtime,
                         status: series.status,
                         poster: series.poster,
-                        episodes: []
-                    });
-                    _.each(episodes, function(episode) {
-                        show.episodes.push({
-                            season: episode.seasonnumber,
-                            episodeNumber: episode.episodenumber,
-                            episodeName: episode.episodename,
-                            firstAired: episode.firstaired,
-                            overview: episode.overview
-                        });
+                        episodes: showEpisodes
                     });
                     callback(err, show);
                 });

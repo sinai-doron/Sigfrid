@@ -8219,3 +8219,39 @@ em {
 .navbar-nav > li > a {
   padding: 15px;
 }
+
+/* line 222, style.scss */
+.modal-backdrop.am-fade {
+  opacity: .5;
+  transition: opacity .15s linear;
+}
+/* line 225, style.scss */
+.modal-backdrop.am-fade.ng-enter {
+  opacity: 0;
+}
+/* line 227, style.scss */
+.modal-backdrop.am-fade.ng-enter.ng-enter-active {
+  opacity: .5;
+}
+/* line 231, style.scss */
+.modal-backdrop.am-fade.ng-leave {
+  opacity: .5;
+}
+/* line 233, style.scss */
+.modal-backdrop.am-fade.ng-leave.ng-leave-active {
+  opacity: 0;
+}
+
+/* line 239, style.scss */
+div .banner {
+  height: 105px;
+  width: 100%;
+  background-color: #aa33aa;
+  background-size: contain;
+}
+
+/* line 246, style.scss */
+div .banner > div {
+  height: 100%;
+  background-size: contain;
+}
