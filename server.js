@@ -313,7 +313,7 @@ app.use(function(err, req, res, next) {
 /********************Set some tasks for later*******************/
 var agenda = new Agenda({db: { address: 'localhost:27017/agendaJobs'}});
 
-agenda.define('delete old users', function(job, done) {
+agenda.define('update db', function(job, done) {
     var showsInDb = {};var day = moment.unix(1413632472);
     var requestShow = [];
     var timestamp = moment().subtract(1,'days').unix();
@@ -385,10 +385,21 @@ agenda.define('delete old users', function(job, done) {
     done()
 
 });
-
-agenda.now('delete old users');
-
+agenda.define('today shows',function(job,done){
+    var start = moment().subtract(1, 'days').hour(0).minute(0).toDate();
+    var end = moment().toDate();
+    console.log('Look for episode in range: ' + start + ' to ' + end);
+    Episode.find({firstAired:{$gte:start, $lt:end}},function(err, results){
+        console.log(results)
+        console.log(Date.now())
+    });
+    done();
+});
+//agenda.now('update db');
+agenda.now('today shows');
 agenda.start();
+agenda.every('1 Hours', 'today shows');
+//agenda.start();
 /********************Set some tasks for later*******************/
 
 
