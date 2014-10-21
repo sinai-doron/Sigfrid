@@ -58,9 +58,10 @@
                 <p>
                     <span class="glyphicon glyphicon-calendar"></span>
                     {{episode.firstAired | date: 'short'}}
+
                     <input type="checkbox" ng-model="episode.watched" ng-change="updateEpisode(episode._id, episode.watched,episode)">
                 </p>
-                <p>{{episode.overview}}</p>
+                <div><!--<img src="http://thetvdb.com/banners/{{episode.imageLocation}}" style="vertical-align: middle"/>--><span>{{episode.overview}}</span></div>
             </div>
         </div>
     </div>

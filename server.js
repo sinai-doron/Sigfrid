@@ -18,6 +18,8 @@ var mongoose = require('mongoose');
 var bcrypt = require('bcryptjs');
 var cynwrig = require('cynwrig');
 var session = require('express-session');
+var moment = require('moment');
+var Agenda = require('agenda');
 var cookieConfig = 	{
     httpOnly: true,
         secure: false, //process.env === 'production', TODO:disscuss this matter
@@ -25,6 +27,11 @@ var cookieConfig = 	{
         signed: true
 };
 
+var apiKey = '94110B1EA4F695E8'; //API key from the tv db
+var parser = xml2js.Parser({
+    explicitArray: false,
+    normalizeTags: true
+});
 var showSchema = new mongoose.Schema({
     _id: Number,
     name: String,
@@ -46,13 +53,18 @@ var showSchema = new mongoose.Schema({
 });
 
 var episodeSchema = {
+    episodeId:String,
     showId: Number,
     season: Number,
     episodeNumber: Number,
     episodeName: String,
     firstAired: Date,
     overview: String,
-    watched: Boolean
+    watched: Boolean,
+    absoluteNumber:Number,
+    imageLocation:String,
+    thumbHeight:Number,
+    thumbWidth:Number
 }
 
 var userSchema = new mongoose.Schema({
@@ -188,11 +200,6 @@ app.put('/api/shows/:id/season/:number', function(req, res, next){
     });
 })
 app.post('/api/shows', function(req, res, next) {
-    var apiKey = '94110B1EA4F695E8'; //API key from the tv db
-    var parser = xml2js.Parser({
-        explicitArray: false,
-        normalizeTags: true
-    });
     var seriesName = req.body.showName
         .toLowerCase()
         .replace(/ /g, '_')
@@ -230,15 +237,21 @@ app.post('/api/shows', function(req, res, next) {
                     var series = result.data.series;
                     var episodes = result.data.episode;
                     var showEpisodes = []
+
                     _.each(episodes, function(episode) {
                         var newEpisode = new Episode({
+                            episodeId: episode.id,
                             showId:series.id,
                             season: episode.seasonnumber,
                             episodeNumber: episode.episodenumber,
                             episodeName: episode.episodename,
                             firstAired: episode.firstaired,
                             overview: episode.overview,
-                            watched: false
+                            watched: false,
+                            absoluteNumber:episode["absolute_number"],
+                            imageLocation:episode["filename"],
+                            thumbHeight:episode["thumb_height"],
+                            thumbWidth:episode["thumb_width"]
                         })
                         showEpisodes.push(newEpisode._id);
                         newEpisode.save(function(err) {
@@ -295,6 +308,88 @@ app.use(function(err, req, res, next) {
     console.error(err.stack);
     res.send(500, { message: err.message });
 });
+
+
+/********************Set some tasks for later*******************/
+var agenda = new Agenda({db: { address: 'localhost:27017/agendaJobs'}});
+
+agenda.define('delete old users', function(job, done) {
+    var showsInDb = {};var day = moment.unix(1413632472);
+    var requestShow = [];
+    var timestamp = moment().subtract(1,'days').unix();
+    Show.find({},function(err, shows){
+        if(err) {
+            console.log(err);
+            return;
+        }
+        _.each(shows, function(show){
+            showsInDb[show._id] = 1;
+        });
+        console.log(showsInDb);
+        console.log('going to ask the changes from: ' + timestamp + ', ' + moment.unix(timestamp).toDate());
+        request.get('http://thetvdb.com/api/Updates.php?type=series&time='+timestamp, function(error, response, body) {
+            if (error) return;
+            parser.parseString(body, function(err, result) {
+                if(err) console.log(err);
+                _.each(result.items.series, function(series){
+                    if(showsInDb[series]){
+                        console.log('found: ' + series);
+                        request.get('http://thetvdb.com/api/' + apiKey + '/series/' + series + '/all/en.xml', function(error, response, body) {
+                            if (error) return next(error);
+                            parser.parseString(body, function(err, result) {
+                                var series = result.data.series;
+                                var episodes = result.data.episode;
+
+                                _.each(episodes, function(episode) {
+                                    Episode.findOne({
+                                        episodeId:episode.id
+                                    },function(err, episode1){
+                                        console.log('ssss' + err)
+                                        if(!episode1){
+                                            console.log('new episode saved')
+                                            var newEpisode = new Episode({
+                                                episodeId: episode.id,
+                                                showId:series.id,
+                                                season: episode.seasonnumber,
+                                                episodeNumber: episode.episodenumber,
+                                                episodeName: episode.episodename,
+                                                firstAired: episode.firstaired,
+                                                overview: episode.overview,
+                                                watched: false,
+                                                absoluteNumber:episode["absolute_number"],
+                                                imageLocation:episode["filename"],
+                                                thumbHeight:episode["thumb_height"],
+                                                thumbWidth:episode["thumb_width"]
+                                            })
+                                            newEpisode.save(function(err) {
+                                                if (err) {
+                                                    console.log(err);
+                                                }
+                                            });
+                                        }
+                                        else{
+                                            console.log('episode: '+episode.id + ' found in db')
+                                        }
+                                    })
+
+                                });
+                            });
+                        });
+                    }
+                })
+
+
+            });
+        });
+    })
+    done()
+
+});
+
+agenda.now('delete old users');
+
+agenda.start();
+/********************Set some tasks for later*******************/
 
 
 http.createServer(app).listen(app.get('port'), function(){
