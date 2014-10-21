@@ -41,6 +41,7 @@
     "express-logger": "0.0.3",
     "express-session": "^1.7.6",
     "express3-handlebars": "^0.5.2",
+    "jsdom": "^1.0.3",
     "lodash": "^2.4.1",
     "log4js": "^0.6.20",
     "moment": "^2.8.3",
