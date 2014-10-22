@@ -389,7 +389,7 @@ agenda.define('update db', function(job, done) {
 agenda.define('today shows',function(job,done){
     async.waterfall([
         function(callback){
-            var start = moment().subtract(1, 'days').hour(0).minute(0).toDate();
+            var start = moment().subtract(3, 'days').hour(0).minute(0).toDate();
             var end = moment().toDate();
             console.log('Look for episode in range: ' + start + ' to ' + end);
             Episode.find({firstAired:{$gte:start, $lt:end}},function(err, results){
@@ -456,9 +456,8 @@ agenda.define('today shows',function(job,done){
                             var document = jsdom(body);
                             var window = document.parentWindow;
                             jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
-                                //console.log($(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick"));
                                 var node = window.$.find('a[title="Download torrent file"]')[0].href;
-                                console.log(node);
+                                downloadFile(node);
                             });
                         });
                     });
@@ -488,44 +487,51 @@ agenda.now('today shows');
 /********************Set some tasks for later*******************/
 
 
-/*request({
-    url: "https://kickass.to/media/getepisode/387825970/",
-    gzip:true,
-    headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.104 Safari/537.36',
-        //"accept-encoding":"gzip",
-        //"accept-language":"en-US,en;q=0.8,fr;q=0.6,he;q=0.4",
-        "cache-control":"no-cache",
-        "Accept":"text/html"
-        //"X-Requested-With":"XMLHttpRequest"
-    }
-}, function(error, response, body) {
-    //console.log(body);
-    var jsdom = require("jsdom").jsdom;
-    var document = jsdom(body);
-    var window = document.parentWindow;
-    console.log(body)
-
-    //$(window.$.find('h3:contains("Season 06")')).next('div').find('span:contains("Episode 04")').parent().attr("onClick")
-    //"showEpisodeInfo(this, '387825970');".split('\'')[1]
-    //https://kickass.to/media/getepisode/387825970/
-
-    jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
-        console.log(window.$.find('h3:contains("Season 08")'));
-        console.log("*********");
-        console.log(window.$.find('a[title="Download torrent file"]')[0].href);
-
-    });
-});*/
-//jsdom.env({
-//    url: "https://kickass.to/the-big-bang-theory-tv8511/",
-//    done: function (errors, window) {
-//        var $ = window.jQuery;
-//        console.log("HN Links");
-//        console.log(window.document.getElementsByTagName('body')._childNodes['0']);
-//    }
-//});
-
 http.createServer(app).listen(app.get('port'), function(){
     console.log( 'http://localhost:' + app.get('port') + '; press Ctrl-C to terminate.' );
 });
+
+function downloadFile(url){
+    var ret = [];
+    var len = 0;
+    var zlib = require("zlib");
+
+    request({
+        url:url,
+        gzip:true,
+        headers: {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+        }
+    }).on('response', function(res){
+        var path = res.request.uri.path.split('/');
+        var fileName = path[path.length-1];
+        console.log(fileName)
+
+        res.on('data', function (data) {
+            ret.push(data);
+            len += data.length;
+        });
+
+        res.on('end', function(){
+            var buffer = Buffer.concat(ret, len);
+            var encoding = res.headers['content-encoding'];
+            if (encoding == 'gzip') {
+                zlib.gunzip(buffer, function(err, decoded) {
+                    var wstream = fs.createWriteStream(fileName);
+                    wstream.write(decoded);
+                    wstream.end();
+                });
+            } else if (encoding == 'deflate') {
+                zlib.inflate(buffer, function(err, decoded) {
+                    var wstream = fs.createWriteStream(fileName);
+                    wstream.write(decoded);
+                    wstream.end();
+                })
+            } else {
+                var wstream = fs.createWriteStream(fileName);
+                wstream.write(buffer.toString());
+                wstream.end();
+            }
+        });
+    });
+}

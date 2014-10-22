@@ -3,8 +3,10 @@
  */
 var http = require('http');
 var fs = require('fs');
+var request = require('request');
 
-var file = fs.createWriteStream("download.torrent");
-var request = http.get("http://torcache.net/torrent/608567F8270EA12AD18CDDEB92024E8872A99948.torrent", function(response) {
-    response.pipe(file);
-});
+
+
+downloadFile("http://torcache.net/torrent/CDB08B8CC8DF4742A994BD1F19D1A4C8E148DEEF.torrent?title=[kickass.to]the.big.bang.theory.s08e06.hdtv.x264.lol.eztv");
+
+
