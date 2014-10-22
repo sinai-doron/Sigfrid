@@ -311,7 +311,7 @@ app.use(function(err, req, res, next) {
 });
 
 
-/********************Set some tasks for later*******************/
+/********************Set some tasks for later *******************/
 var agenda = new Agenda({db: { address: 'localhost:27017/agendaJobs'}});
 
 agenda.define('update db', function(job, done) {
@@ -345,9 +345,9 @@ agenda.define('update db', function(job, done) {
                                     Episode.findOne({
                                         episodeId:episode.id
                                     },function(err, episode1){
-                                        console.log('ssss' + err)
+                                        if(err) console.log('An error as occured: ' + err)
                                         if(!episode1){
-                                            console.log('new episode saved')
+                                            console.log('new episode saved'.green)
                                             var newEpisode = new Episode({
                                                 episodeId: episode.id,
                                                 showId:series.id,
@@ -390,7 +390,7 @@ agenda.define('today shows',function(job,done){
     async.waterfall([
         // find relevant episode in the db
         function(callback){
-            var start = moment().subtract(3, 'days').hour(0).minute(0).toDate();
+            var start = moment().subtract(1, 'days').hour(0).minute(0).toDate();
             var end = moment().toDate();
             console.log('Look for episode in range: ' + start + ' to ' + end);
             Episode.find({firstAired:{$gte:start, $lt:end}},function(err, results){
@@ -485,7 +485,8 @@ agenda.define('today shows',function(job,done){
     });
 });
 agenda.start();
-agenda.now('today shows');
+//agenda.now('today shows');
+agenda.now('update db');
 //agenda.now('today shows');
 //agenda.start();
 //agenda.every('1 Hours', 'today shows');
