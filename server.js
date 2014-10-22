@@ -388,6 +388,7 @@ agenda.define('update db', function(job, done) {
 });
 agenda.define('today shows',function(job,done){
     async.waterfall([
+        // find relevant episode in the db
         function(callback){
             var start = moment().subtract(3, 'days').hour(0).minute(0).toDate();
             var end = moment().toDate();
@@ -401,6 +402,7 @@ agenda.define('today shows',function(job,done){
                 callback(null,results);
             });
         },
+        //extract the urls of each show to kickass torrents
         function(episodes, callback){
             var urls = [];
             Show.find({},function(err,shows){
@@ -425,9 +427,11 @@ agenda.define('today shows',function(job,done){
                 callback(null, urls)
             })
         },
+        //go get the torrent files urls
         function(urls, callback){
             _.each(urls,function(url){
                 console.log(url);
+                //parse the show page in kickass torrents to get the episode number in the site
                 request({
                     url: url.url,
                     gzip:true,
@@ -436,7 +440,7 @@ agenda.define('today shows',function(job,done){
                         "cache-control":"no-cache",
                         "Accept":"text/html"
                     }
-                }, function(error, response, body) {
+                },  function(error, response, body) {
                     var document = jsdom(body);
                     var window = document.parentWindow;
                     jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
@@ -444,6 +448,8 @@ agenda.define('today shows',function(job,done){
                         console.log('h3:contains("Season 0' + url.season + '")');
                         var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick");
                         var episodeUrlTorrent = node.split('\'')[1];
+
+                        //go get the list of files related to this show
                         request({
                             url: 'https://kickass.to/media/getepisode/' + episodeUrlTorrent + '/',
                             gzip:true,
@@ -533,5 +539,7 @@ function downloadFile(url){
                 wstream.end();
             }
         });
-    });
+    }).on('error', function(err) {
+        console.log(err);
+    });;
 }
