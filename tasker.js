@@ -93,7 +93,7 @@ var agenda = new Agenda({db: { address: 'localhost:27017/agendaJobs'}});
 agenda.define('update db', function(job, done) {
     var showsInDb = {};var day = moment.unix(1413632472);
     var requestShow = [];
-    var timestamp = moment().subtract(1,'days').unix();
+    var timestamp = moment().subtract(6,'days').unix();
     Show.find({},function(err, shows){
         if(err) {
             console.log(err);
@@ -138,7 +138,11 @@ agenda.define('update db', function(job, done) {
                                                 thumbHeight:episode["thumb_height"],
                                                 thumbWidth:episode["thumb_width"]
                                             })
-                                            newEpisode.save(function(err) {
+                                            newEpisode.save(function(err,episode) {
+                                                Show.findById(series.id,function(err, show){
+                                                    show.episodes.push(episode._id);
+                                                    show.save(function(){})
+                                                });
                                                 if (err) {
                                                     console.log(err);
                                                 }
@@ -281,6 +285,6 @@ agenda.define('today shows',function(job,done){
 agenda.start();
 agenda.every('24 hours', 'today shows');
 agenda.every('24 hours', 'update db');
-agenda.now('today shows')
+agenda.now('update db')
 
 /********************Set some tasks for later*******************/

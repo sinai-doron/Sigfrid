@@ -97,7 +97,7 @@ app.get('/api/shows', function(req, res, next) {
 
 app.get('/api/shows/:id', function(req, res, next) {
     Show.findById(req.params.id)
-        .populate('episodes')
+        .populate('episodes', null, null, {sort:{'season':1, 'episodeNumber':1}})
         .exec(function(err, show) {
             if (err) return next(err);
             res.send(show);
