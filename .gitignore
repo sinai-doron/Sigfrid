@@ -7,3 +7,4 @@ node_modules/
 .sass-cache
 dist_dev
 dist_prod
+*.torrent

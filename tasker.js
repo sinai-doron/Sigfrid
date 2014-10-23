@@ -23,7 +23,21 @@ var apiKey = '94110B1EA4F695E8'; //API key from the tv db
 var User = mongoose.model('User');
 var Show = mongoose.model('Show');
 var Episode = mongoose.model('Episode');
-function downloadFile(url){
+
+function checkAndCreateFolder(folder){
+    if(fs.existsSync(folder)){
+        return true;
+    }
+    else{
+        fs.mkdirSync(folder);
+        if(fs.existsSync(folder)){
+            return true;
+        }
+        return false;
+    }
+}
+
+function downloadFile(url, folder){
     var ret = [];
     var len = 0;
     var zlib = require("zlib");
@@ -47,20 +61,23 @@ function downloadFile(url){
         res.on('end', function(){
             var buffer = Buffer.concat(ret, len);
             var encoding = res.headers['content-encoding'];
+            var folderName = downloadFolder + folder + '/';
+            if(!checkAndCreateFolder(folderName)){
+                console.log('Error creating folder');
+                return;
+            }
+            var wstream = fs.createWriteStream(folderName + fileName);
             if (encoding == 'gzip') {
                 zlib.gunzip(buffer, function(err, decoded) {
-                    var wstream = fs.createWriteStream(downloadFolder + fileName);
                     wstream.write(decoded);
                     wstream.end();
                 });
             } else if (encoding == 'deflate') {
                 zlib.inflate(buffer, function(err, decoded) {
-                    var wstream = fs.createWriteStream(fileName);
                     wstream.write(decoded);
                     wstream.end();
                 })
             } else {
-                var wstream = fs.createWriteStream(fileName);
                 wstream.write(buffer.toString());
                 wstream.end();
             }
@@ -146,10 +163,16 @@ agenda.define('update db', function(job, done) {
 
 });
 agenda.define('today shows',function(job,done){
+    console.log('2');
+    var downloadDays = config.get('downloadDays');
+    if(!downloadDays || isNaN(parseInt(downloadDays))){
+        downloadDays = 1;
+    }
+    console.log(downloadDays);
     async.waterfall([
         // find relevant episode in the db
         function(callback){
-            var start = moment().subtract(2, 'days').hour(0).minute(0).toDate();
+            var start = moment().subtract(downloadDays, 'days').hour(0).minute(0).toDate();
             var end = moment().toDate();
             console.log('Look for episode in range: ' + start + ' to ' + end);
             Episode.find({firstAired:{$gte:start, $lt:end}},function(err, results){
@@ -172,14 +195,18 @@ agenda.define('today shows',function(job,done){
                 if(err) callback(err);
 
                 for(var i=0; i <shows.length; i++){
-                    showsNumbers[shows[i]._id] = shows[i].url;
+                    var o = {}
+                    o.url = shows[i].url;
+                    o.name = shows[i].name;
+                    showsNumbers[shows[i]._id] = o;
                 }
 
                 _.each(episodes,function(episode){
                     var u = {};
                     u.season = episode.season;
                     u.number = episode.episodeNumber;
-                    u.url = showsNumbers[episode.showId];
+                    u.url = showsNumbers[episode.showId]["url"];
+                    u.name = showsNumbers[episode.showId]["name"];
                     if(u.url && (u.url !== "")){
                         urls.push(u);
                     }
@@ -229,7 +256,8 @@ agenda.define('today shows',function(job,done){
                             jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
                                 var node = window.$.find('a[title="Download torrent file"]')[0].href;
                                 console.log(node)
-                                downloadFile(node);
+                                console.log(url.name)
+                                downloadFile(node, url.name);
                             });
                         });
                     });
