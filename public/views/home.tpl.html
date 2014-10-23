@@ -29,7 +29,7 @@
                     </a>
                     <div class="text-center">
                         <a href="/shows/{{show._id}}">{{show.name}}</a>
-                        <a href="{{show.link}}" target="_blank"><span style="margin-left: 5px" class="glyphicon glyphicon-download"></span></a>
+                        <span style="margin-left: 5px" class="glyphicon glyphicon-download" ng-click="changeUrl(show._id)"></span>
                         <p class="text-muted">Episodes: {{show.episodes.length}}</p>
                     </div>
                 </div>

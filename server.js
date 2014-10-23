@@ -103,6 +103,31 @@ app.get('/api/shows/:id', function(req, res, next) {
             res.send(show);
         });
 });
+
+app.post('/api/shows/:id', function(req, res, next){
+    Show.findById(req.params.id,function(err,show){
+        if (err){
+            console.log('Error' + err);
+            return next(err);
+        }
+        if(show){
+            var p = req.body
+            if(p["url"]){
+                show["url"] = p["url"];
+            }
+            show.save(function(err,savedShow){
+                if(err){
+                    res.status(500).end();
+                    console.log(err);
+                }
+                res.send(200);
+            });
+        }
+        else{
+            res.status(404).end();
+        }
+    });
+});
 app.put('/api/episodes/:id', function(req, res, next){
 
     Episode.findById(req.params.id,function(err,episode){

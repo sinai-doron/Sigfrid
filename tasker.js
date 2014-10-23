@@ -242,10 +242,7 @@ agenda.define('today shows',function(job,done){
     });
 });
 agenda.start();
-//agenda.now('today shows');
-agenda.now('update db');
-//agenda.now('today shows');
-//agenda.start();
-//agenda.every('1 Hours', 'today shows');
+agenda.every('24 hours', 'today shows');
+agenda.every('24 hours', 'update db');
 
 /********************Set some tasks for later*******************/

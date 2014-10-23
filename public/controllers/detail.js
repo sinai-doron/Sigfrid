@@ -45,7 +45,6 @@ angular.module('MyApp')
                 };
 
                 $scope.updateEpisode = function(id, watched,episode){
-                    debugger;
                     $http.put('/api/episodes/' + id, {_id:id, watched:watched}).
                         success(function(data, status, headers, config) {
 
