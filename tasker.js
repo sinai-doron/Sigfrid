@@ -11,6 +11,8 @@ var winston = require('winston');
 var fs = require('fs');
 var _ = require('lodash');
 var jsdom = require("jsdom").jsdom;
+var config = require('config');
+var downloadFolder = config.get('downloadFolder');
 require("./db.js")
 
 var parser = xml2js.Parser({
@@ -47,7 +49,7 @@ function downloadFile(url){
             var encoding = res.headers['content-encoding'];
             if (encoding == 'gzip') {
                 zlib.gunzip(buffer, function(err, decoded) {
-                    var wstream = fs.createWriteStream(fileName);
+                    var wstream = fs.createWriteStream(downloadFolder + fileName);
                     wstream.write(decoded);
                     wstream.end();
                 });
@@ -147,11 +149,14 @@ agenda.define('today shows',function(job,done){
     async.waterfall([
         // find relevant episode in the db
         function(callback){
-            var start = moment().subtract(1, 'days').hour(0).minute(0).toDate();
+            var start = moment().subtract(2, 'days').hour(0).minute(0).toDate();
             var end = moment().toDate();
             console.log('Look for episode in range: ' + start + ' to ' + end);
             Episode.find({firstAired:{$gte:start, $lt:end}},function(err, results){
-                console.log('Found the following: ', results);
+                _.each(results, function(r){
+                    console.log('Found the following: ', r.episodeId + ':' + r.episodeName);
+                })
+
                 if(err) callback(err);
                 if(results.length < 1) {
                     callback(111);
@@ -162,21 +167,21 @@ agenda.define('today shows',function(job,done){
         //extract the urls of each show to kickass torrents
         function(episodes, callback){
             var urls = [];
+            var showsNumbers = {}
             Show.find({},function(err,shows){
                 if(err) callback(err);
-                var allUrls = shows.map(function (m) {
-                    var obj = {};
-                    obj['url'] = m.url;
-                    obj[m._id] = m.url;
-                    return obj;
-                });
+
+                for(var i=0; i <shows.length; i++){
+                    showsNumbers[shows[i]._id] = shows[i].url;
+                }
+
                 _.each(episodes,function(episode){
-                    for(var i=0; i < allUrls.length; i++){
-                        if(allUrls[i][episode.showId] !== undefined){
-                            allUrls[i]['season'] = episode.season;
-                            allUrls[i]['number'] = episode.episodeNumber;
-                            urls.push(allUrls[i]);
-                        }
+                    var u = {};
+                    u.season = episode.season;
+                    u.number = episode.episodeNumber;
+                    u.url = showsNumbers[episode.showId];
+                    if(u.url && (u.url !== "")){
+                        urls.push(u);
                     }
 
                 });
@@ -203,9 +208,11 @@ agenda.define('today shows',function(job,done){
                     jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
                         //console.log($(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick"));
                         console.log('h3:contains("Season 0' + url.season + '")');
+                        console.log(response.statusCode)
                         var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick");
+                        console.log(node)
                         var episodeUrlTorrent = node.split('\'')[1];
-
+                        console.log(episodeUrlTorrent)
                         //go get the list of files related to this show
                         request({
                             url: 'https://kickass.to/media/getepisode/' + episodeUrlTorrent + '/',
@@ -215,11 +222,13 @@ agenda.define('today shows',function(job,done){
                                 "cache-control":"no-cache",
                                 "Accept":"text/html"
                             }
-                        }, function(error, response, body) {
-                            var document = jsdom(body);
+                        }, function(error, response1, body1) {
+                            console.log("getting episodes" + response1.statusCode)
+                            var document = jsdom(body1);
                             var window = document.parentWindow;
                             jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
                                 var node = window.$.find('a[title="Download torrent file"]')[0].href;
+                                console.log(node)
                                 downloadFile(node);
                             });
                         });
@@ -244,5 +253,6 @@ agenda.define('today shows',function(job,done){
 agenda.start();
 agenda.every('24 hours', 'today shows');
 agenda.every('24 hours', 'update db');
+agenda.now('today shows')
 
 /********************Set some tasks for later*******************/
