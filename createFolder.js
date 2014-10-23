@@ -31,6 +31,6 @@ Show.find({},function(err, shows){
         console.log(name);
         console.log(checkAndCreateFolder(downloadFolder + name + '/'));
     });
+    process.exit(1);
 });
 
-process.exit(1);
