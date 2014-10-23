@@ -28,7 +28,8 @@ function checkAndCreateFolder(folder){
 Show.find({},function(err, shows){
     _.each(shows,function(show){
         var name = show.name;
-        checkAndCreateFolder(downloadFolder + name + '/');
+        console.log(name);
+        console.log(checkAndCreateFolder(downloadFolder + name + '/'));
     });
 });
 
