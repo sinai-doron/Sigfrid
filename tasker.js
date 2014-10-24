@@ -170,25 +170,25 @@ agenda.define('update db', function(job, done) {
 
 });
 agenda.define('today shows',function(job,done){
-    console.log('2');
     var downloadDays = config.get('downloadDays');
     if(!downloadDays || isNaN(parseInt(downloadDays))){
         downloadDays = 1;
     }
-    console.log(downloadDays);
+    debugLogger.info('Number of days back to look for: ' +downloadDays);
     async.waterfall([
         // find relevant episode in the db
         function(callback){
             var start = moment().subtract(downloadDays, 'days').hour(0).minute(0).toDate();
-            var end = moment().toDate();
-            console.log('Look for episode in range: ' + start + ' to ' + end);
+            var end = moment().hour(0).minute(0).toDate();
+            debugLogger.info('Look for episode in range: ' + start + ' - ' + end);
             Episode.find({firstAired:{$gte:start, $lt:end}},function(err, results){
                 _.each(results, function(r){
-                    console.log('Found the following: ', r.episodeId + ':' + r.episodeName);
+                    debugLogger.info('Found the following: ', r.episodeId + ':' + r.episodeName);
                 })
 
                 if(err) callback(err);
                 if(results.length < 1) {
+                    debugLogger.info('No episode found for that data range');
                     callback(111);
                 }
                 callback(null,results);
@@ -225,9 +225,8 @@ agenda.define('today shows',function(job,done){
         },
         //go get the torrent files urls
         function(urls, callback){
+            debugLogger.info('Go get the torrents from kickass');
             _.each(urls,function(url){
-                console.log(url);
-                //parse the show page in kickass torrents to get the episode number in the site
                 request({
                     url: url.url,
                     gzip:true,
@@ -237,16 +236,16 @@ agenda.define('today shows',function(job,done){
                         "Accept":"text/html"
                     }
                 },  function(error, response, body) {
+                    debugLogger.info('parse the show page in kickass torrents to get the episode number in the site ' + JSON.stringify(url));
                     var document = jsdom(body);
                     var window = document.parentWindow;
                     jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
                         //console.log($(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick"));
-                        console.log('h3:contains("Season 0' + url.season + '")');
-                        console.log(response.statusCode)
+                        debugLogger.info('Looking for element: h3:contains("Season 0' + url.season + '")');
                         var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick");
-                        console.log(node)
+                        debugLogger.info('Found the following element: ' + node);
                         var episodeUrlTorrent = node.split('\'')[1];
-                        console.log(episodeUrlTorrent)
+                        debugLogger.info(episodeUrlTorrent)
                         //go get the list of files related to this show
                         request({
                             url: 'https://kickass.to/media/getepisode/' + episodeUrlTorrent + '/',
@@ -257,7 +256,7 @@ agenda.define('today shows',function(job,done){
                                 "Accept":"text/html"
                             }
                         }, function(error, response1, body1) {
-                            console.log("getting episodes" + response1.statusCode)
+                            debugLogger.info("getting episodes - got status code: " + response1.statusCode)
                             var document = jsdom(body1);
                             var window = document.parentWindow;
                             jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
@@ -265,14 +264,14 @@ agenda.define('today shows',function(job,done){
                                 var node = window.$(window.$.find('tr:contains("x264")')).find(('a[title="Download torrent file"]'));
                                 if (node.length < 1){
                                     node = window.$.find('a[title="Download torrent file"]');
-                                    console.log('No x264 torrents found in page');
+                                    debugLogger.info('No x264 torrents found in page');
                                     if(node.length < 1){
-                                        console.log('No torrents found in page');
+                                        debugLogger.info('No torrents found in page');
                                         return;
                                     }
                                 }
                                 var nodeUrl = node[0].href;
-                                console.log(url.name)
+                                debugLogger.info(url.name)
                                 downloadFile(nodeUrl, url.name);
                             });
                         });
@@ -283,13 +282,13 @@ agenda.define('today shows',function(job,done){
         }
     ], function (err, result) {
         if(err === 111){
-            console.log('No episodes were found for today');
+            debugLogger.info('No episodes were found for today');
         }
         else if(err === 222){
-            console.log('No links found in db');
+            debugLogger.info('No links found in db');
         }
         else{
-            console.log(err)
+            errorLogger.error(err)
         }
         done();
     });
