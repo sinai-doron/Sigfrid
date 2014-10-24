@@ -258,10 +258,19 @@ agenda.define('today shows',function(job,done){
                             var document = jsdom(body1);
                             var window = document.parentWindow;
                             jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
-                                var node = window.$.find('a[title="Download torrent file"]')[0].href;
-                                console.log(node)
+                                //var node = window.$.find('a[title="Download torrent file"]')[0].href;
+                                var node = window.$(window.$.find('tr:contains("x264")')).find(('a[title="Download torrent file"]'));
+                                if (node.length < 1){
+                                    node = window.$.find('a[title="Download torrent file"]');
+                                    console.log('No x264 torrents found in page');
+                                    if(node.length < 1){
+                                        console.log('No torrents found in page');
+                                        return;
+                                    }
+                                }
+                                var nodeUrl = node[0].href;
                                 console.log(url.name)
-                                downloadFile(node, url.name);
+                                downloadFile(nodeUrl, url.name);
                             });
                         });
                     });
@@ -285,6 +294,6 @@ agenda.define('today shows',function(job,done){
 agenda.start();
 agenda.every('24 hours', 'today shows');
 agenda.every('24 hours', 'update db');
-agenda.now('update db')
+agenda.now('today shows')
 
 /********************Set some tasks for later*******************/
