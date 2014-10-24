@@ -13,8 +13,10 @@ var _ = require('lodash');
 var jsdom = require("jsdom").jsdom;
 var config = require('config');
 var downloadFolder = config.get('downloadFolder');
+require('./winston-config.js');
 require("./db.js")
-
+var debugLogger = winston.loggers.get('all');
+var errorLogger = winston.loggers.get('terror');
 var parser = xml2js.Parser({
     explicitArray: false,
     normalizeTags: true
@@ -41,7 +43,8 @@ function downloadFile(url, folder){
     var ret = [];
     var len = 0;
     var zlib = require("zlib");
-
+    debugLogger.info('Going to download from the following URL: ' + url);
+    debugLogger.info('and save it in this folder: ' + folder);
     request({
         url:url,
         gzip:true,
@@ -51,7 +54,7 @@ function downloadFile(url, folder){
     }).on('response', function(res){
         var path = res.request.uri.path.split('/');
         var fileName = path[path.length-1];
-        console.log(fileName)
+        debugLogger.info('Giving it this filename: ' + fileName);
 
         res.on('data', function (data) {
             ret.push(data);
@@ -63,7 +66,7 @@ function downloadFile(url, folder){
             var encoding = res.headers['content-encoding'];
             var folderName = downloadFolder + folder + '/';
             if(!checkAndCreateFolder(folderName)){
-                console.log('Error creating folder');
+                errorLogger.error('Can not create folders');
                 return;
             }
             var wstream = fs.createWriteStream(folderName + fileName);
@@ -83,7 +86,7 @@ function downloadFile(url, folder){
             }
         });
     }).on('error', function(err) {
-        console.log(err);
+        errorLogger.error('Error while trying to save file ' + err);
     });;
 }
 
