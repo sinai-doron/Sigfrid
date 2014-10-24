@@ -8,3 +8,4 @@ node_modules/
 dist_dev
 dist_prod
 *.torrent
+config/default.json
