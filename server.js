@@ -203,6 +203,7 @@ app.post('/api/shows', function(req, res, next) {
                         var newEpisode = new Episode({
                             episodeId: episode.id,
                             showId:series.id,
+                            showName: series.seriesname,
                             season: episode.seasonnumber,
                             episodeNumber: episode.episodenumber,
                             episodeName: episode.episodename,
@@ -214,6 +215,7 @@ app.post('/api/shows', function(req, res, next) {
                             thumbHeight:episode["thumb_height"],
                             thumbWidth:episode["thumb_width"]
                         })
+                        console.log(newEpisode.showName)
                         showEpisodes.push(newEpisode._id);
                         newEpisode.save(function(err) {
                             if (err) {

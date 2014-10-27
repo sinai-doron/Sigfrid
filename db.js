@@ -26,6 +26,7 @@ var showSchema = new mongoose.Schema({
 var episodeSchema = {
     episodeId:String,
     showId: Number,
+    showName: String,
     season: Number,
     episodeNumber: Number,
     episodeName: String,
