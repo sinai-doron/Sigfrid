@@ -12,9 +12,11 @@ var fs = require('fs');
 var _ = require('lodash');
 var jsdom = require("jsdom").jsdom;
 var config = require('config');
+var Q = require('q');
 var downloadFolder = config.get('downloadFolder');
 require('./winston-config.js');
-require("./db.js")
+require("./db.js");
+var mailer = require('./mailer.js');
 var debugLogger = winston.loggers.get('all');
 var errorLogger = winston.loggers.get('terror');
 var parser = xml2js.Parser({
@@ -25,6 +27,7 @@ var apiKey = '94110B1EA4F695E8'; //API key from the tv db
 var User = mongoose.model('User');
 var Show = mongoose.model('Show');
 var Episode = mongoose.model('Episode');
+
 
 function checkAndCreateFolder(folder){
     if(fs.existsSync(folder)){
@@ -39,7 +42,7 @@ function checkAndCreateFolder(folder){
     }
 }
 
-function downloadFile(url, folder){
+function downloadFile(url, folder, defer){
     var ret = [];
     var len = 0;
     var zlib = require("zlib");
@@ -67,6 +70,7 @@ function downloadFile(url, folder){
             var folderName = downloadFolder + folder + '/';
             if(!checkAndCreateFolder(folderName)){
                 errorLogger.error('Can not create folders');
+                defer.reject("Error creating folders");
                 return;
             }
             var wstream = fs.createWriteStream(folderName + fileName);
@@ -84,9 +88,14 @@ function downloadFile(url, folder){
                 wstream.write(buffer.toString());
                 wstream.end();
             }
+            defer.resolve({
+                status:"sucess",
+                filename:fileName
+            })
         });
     }).on('error', function(err) {
         errorLogger.error('Error while trying to save file ' + err);
+        defer.reject("Error downloading file");
     });;
 }
 
@@ -225,76 +234,33 @@ agenda.define('today shows',function(job,done){
         },
         //go get the torrent files urls
         function(urls, callback){
-            debugLogger.info('Go get the torrents from kickass');
             _.each(urls,function(url){
-                request({
-                    url: url.url,
-                    gzip:true,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.104 Safari/537.36',
-                        "cache-control":"no-cache",
-                        "Accept":"text/html"
-                    }
-                },  function(error, response, body) {
-                    debugLogger.info('parse the show page in kickass torrents to get the episode number in the site ' + JSON.stringify(url));
-                    var document = jsdom(body);
-                    var window = document.parentWindow;
-                    jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
-                        //console.log($(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick"));
-                        debugLogger.info('Looking for element: h3:contains("Season 0' + url.season + '")');
-                        var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick");
-                        debugLogger.info('Found the following element: ' + node);
-                        var episodeUrlTorrent = node.split('\'')[1];
-                        debugLogger.info(episodeUrlTorrent)
-                        //go get the list of files related to this show
-                        request({
-                            url: 'https://kickass.to/media/getepisode/' + episodeUrlTorrent + '/',
-                            gzip:true,
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.104 Safari/537.36',
-                                "cache-control":"no-cache",
-                                "Accept":"text/html"
-                            }
-                        }, function(error, response1, body1) {
-                            debugLogger.info("getting episodes - got status code: " + response1.statusCode)
-                            var document = jsdom(body1);
-                            var window = document.parentWindow;
-                            jsdom.jQueryify(window, "http://code.jquery.com/jquery-2.1.1.js", function () {
-                                //var node = window.$.find('a[title="Download torrent file"]')[0].href;
-                                var node = window.$(window.$.find('tr:contains("x264")')).find(('a[title="Download torrent file"]'));
-                                if (node.length < 1){
-                                    node = window.$.find('a[title="Download torrent file"]');
-                                    debugLogger.info('No x264 torrents found in page');
-                                    if(node.length < 1){
-                                        debugLogger.info('No torrents found in page');
-                                        return;
-                                    }
-                                }
-                                var nodeUrl = node[0].href;
-                                debugLogger.info(url.name)
-                                downloadFile(nodeUrl, url.name);
-                            });
-                        });
-                    });
-                });
+                console.log(url)
             });
             callback(null);
         }
     ], function (err, result) {
-        if(err === 111){
-            debugLogger.info('No episodes were found for today');
-        }
-        else if(err === 222){
-            debugLogger.info('No links found in db');
-        }
-        else{
-            errorLogger.error(err)
+        if(err){
+            if(err === 111){
+                debugLogger.info('No episodes were found for today');
+            }
+            else if(err === 222){
+                debugLogger.info('No links found in db');
+            }
+            else{
+                errorLogger.error(err)
+            }
         }
         done();
     });
-});
+})
+mailer(agenda);
 agenda.start();
-agenda.every('24 hours', 'today shows');
-agenda.every('24 hours', 'update db');
+/*agenda.now('send mail',{
+    mailBody: "Something new"
+});*/
+agenda.now('today shows');
+//agenda.every('24 hours', 'today shows');
+//agenda.every('24 hours', 'update db');
 
 /********************Set some tasks for later*******************/
