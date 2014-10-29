@@ -329,13 +329,7 @@ agenda.define('today shows',function(job,done){
 mailer(agenda);
 updater(agenda);
 agenda.start();
-agenda.now('update db');
-agenda.now('today shows');
-/*agenda.now('send mail',{
-    mailBody: "Something new"
-});*/
-//agenda.now('today shows');
-//agenda.every('24 hours', 'today shows');
-//agenda.every('24 hours', 'update db');
+agenda.every('24 hours', 'today shows');
+agenda.every('24 hours', 'update db');
 
 /********************Set some tasks for later*******************/
