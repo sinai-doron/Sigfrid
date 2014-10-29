@@ -331,5 +331,6 @@ updater(agenda);
 agenda.start();
 agenda.every('24 hours', 'today shows');
 agenda.every('24 hours', 'update db');
+agenda.now('today shows');
 
 /********************Set some tasks for later*******************/
