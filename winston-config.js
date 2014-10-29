@@ -30,3 +30,31 @@ winston.loggers.add('terror', {
     }
 
 });
+
+winston.loggers.add('updaterLog', {
+    console: {
+        level: 'debug',
+        colorize: 'true',
+        label: 'updater logs'
+    },
+    file: {
+        level:'debug',
+        filename: 'logs/updaterLog.log',
+        json:false
+    }
+
+});
+
+winston.loggers.add('updaterError', {
+    console: {
+        level: 'debug',
+        colorize: 'true',
+        label: 'updater errors'
+    },
+    file: {
+        level:'debug',
+        filename: 'logs/updaterError.log',
+        json:false
+    }
+
+});

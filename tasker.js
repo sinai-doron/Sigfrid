@@ -7,16 +7,17 @@ var xml2js = require('xml2js');
 var moment = require('moment');
 var Agenda = require('agenda');
 var async = require('async');
-var winston = require('winston');
 var fs = require('fs');
 var _ = require('lodash');
 var jsdom = require("jsdom").jsdom;
 var config = require('config');
 var Q = require('q');
 var downloadFolder = config.get('downloadFolder');
+var winston = require('winston');
 require('./winston-config.js');
 require("./db.js");
 var mailer = require('./mailer.js');
+var updater = require('./updater.js');
 var debugLogger = winston.loggers.get('all');
 var errorLogger = winston.loggers.get('terror');
 var parser = xml2js.Parser({
@@ -207,82 +208,7 @@ function requestEpisodeSegment(episode){
 /********************Set some tasks for later *******************/
 var agenda = new Agenda({db: { address: 'localhost:27017/agendaJobs'}});
 
-agenda.define('update db', function(job, done) {
-    var showsInDb = {};var day = moment.unix(1413632472);
-    var requestShow = [];
-    var timestamp = moment().subtract(6,'days').unix();
-    Show.find({},function(err, shows){
-        if(err) {
-            console.log(err);
-            return;
-        }
-        _.each(shows, function(show){
-            showsInDb[show._id] = 1;
-        });
-        console.log(showsInDb);
-        console.log('going to ask the changes from: ' + timestamp + ', ' + moment.unix(timestamp).toDate());
-        request.get('http://thetvdb.com/api/Updates.php?type=series&time='+timestamp, function(error, response, body) {
-            if (error) return;
-            parser.parseString(body, function(err, result) {
-                if(err) console.log(err);
-                _.each(result.items.series, function(series){
-                    if(showsInDb[series]){
-                        console.log('found: ' + series);
-                        request.get('http://thetvdb.com/api/' + apiKey + '/series/' + series + '/all/en.xml', function(error, response, body) {
-                            if (error) return next(error);
-                            parser.parseString(body, function(err, result) {
-                                var series = result.data.series;
-                                var episodes = result.data.episode;
 
-                                _.each(episodes, function(episode) {
-                                    Episode.findOne({
-                                        episodeId:episode.id
-                                    },function(err, episode1){
-                                        if(err) console.log('An error as occured: ' + err)
-                                        if(!episode1){
-                                            console.log('new episode saved'.green)
-                                            var newEpisode = new Episode({
-                                                episodeId: episode.id,
-                                                showId:series.id,
-                                                season: episode.seasonnumber,
-                                                episodeNumber: episode.episodenumber,
-                                                episodeName: episode.episodename,
-                                                firstAired: episode.firstaired,
-                                                overview: episode.overview,
-                                                watched: false,
-                                                absoluteNumber:episode["absolute_number"],
-                                                imageLocation:episode["filename"],
-                                                thumbHeight:episode["thumb_height"],
-                                                thumbWidth:episode["thumb_width"]
-                                            })
-                                            newEpisode.save(function(err,episode) {
-                                                Show.findById(series.id,function(err, show){
-                                                    show.episodes.push(episode._id);
-                                                    show.save(function(){})
-                                                });
-                                                if (err) {
-                                                    console.log(err);
-                                                }
-                                            });
-                                        }
-                                        else{
-                                            console.log('episode: '+episode.id + ' found in db')
-                                        }
-                                    })
-
-                                });
-                            });
-                        });
-                    }
-                })
-
-
-            });
-        });
-    })
-    done()
-
-});
 agenda.define('today shows',function(job,done){
     var downloadDays = config.get('downloadDays');
     if(!downloadDays || isNaN(parseInt(downloadDays))){
@@ -302,7 +228,7 @@ agenda.define('today shows',function(job,done){
 
                 if(err) callback(err);
                 if(results.length < 1) {
-                    debugLogger.info('No episode found for that data range');
+                    debugLogger.info('No episode found for that date range');
                     callback(111);
                 }
                 callback(null,results);
@@ -401,11 +327,14 @@ agenda.define('today shows',function(job,done){
     });
 })
 mailer(agenda);
+updater(agenda);
 agenda.start();
+agenda.now('update db');
+agenda.now('today shows');
 /*agenda.now('send mail',{
     mailBody: "Something new"
 });*/
-agenda.now('today shows');
+//agenda.now('today shows');
 //agenda.every('24 hours', 'today shows');
 //agenda.every('24 hours', 'update db');
 
