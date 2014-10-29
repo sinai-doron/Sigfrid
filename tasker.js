@@ -99,6 +99,111 @@ function downloadFile(url, folder, defer){
     });;
 }
 
+function requestSeriesPage(url){
+    var debugMessagePrefix = '[' + url.name + ' S' + url.season + 'E' + url.number + '] ';
+    var finishedRequest = Q.defer();
+    var finishedRequestPromise = finishedRequest.promise;
+    debugLogger.info(debugMessagePrefix + 'Going to request the page');
+
+    request({
+        url: url.url,
+        gzip:true
+    },  function(error, response, body) {
+        debugLogger.info(debugMessagePrefix + 'Got a response back with status: ' + response.statusCode);
+        if (!error && response.statusCode == 200) {
+            debugLogger.info(debugMessagePrefix + 'About to parse the dom');
+            jsdom.env(
+                body,
+                ["./jquery-2.1.1.min.js"],
+                function (errors, window) {
+                    if(errors) {
+                        errorLogger.error(errors);
+                        finishedRequest.reject("JSDOM error - see logs");
+                        return;
+                    }
+                    var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick");
+                    if(node && node.length > 1){
+                        var episodeUrlTorrent = node.split('\'')[1];
+                        if(episodeUrlTorrent){
+                            debugLogger.info(debugMessagePrefix + 'Found the following episode number: ' + episodeUrlTorrent);
+                            finishedRequest.resolve('' + episodeUrlTorrent);
+                        }
+                    }
+                    else{
+                        finishedRequest.reject("Did not find season in page");
+                    }
+                }
+            );
+        }
+        else{
+            errorLogger.error(error);
+            finishedRequest.reject();
+        }
+    });
+
+    //do it next
+    finishedRequestPromise.then(function(episodeNumber){
+        requestEpisodeSegment({episodeNumber: episodeNumber, debugMessagePrefix:debugMessagePrefix, name:url.name, deferred:url.deferred});
+    }, function(reason){
+        errorLogger.error(reason);
+        url.deferred.reject(reason);
+    }, function(){});  //.then(onFulfilled, onRejected, onProgress)
+}
+
+function requestEpisodeSegment(episode){
+    var debugMessagePrefix = episode.debugMessagePrefix;
+    var url = 'https://kickass.to/media/getepisode/' + episode.episodeNumber + '/';
+    var finishedRequest = Q.defer();
+    var finishedRequestPromise = finishedRequest.promise;
+
+    debugLogger.info(debugMessagePrefix + 'Getting segment from: ' + url);
+
+    request({
+        url: url,
+        gzip:true
+    },  function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+            jsdom.env(
+                body,
+                ["./jquery-2.1.1.min.js"],
+                function (errors, window) {
+                    if(errors) {
+                        errorLogger.error("requestEpisodeSegment - jsdom - " + errors);
+                        finishedRequest.reject("JSDOM error - see logs");
+                        return;
+                    }
+                    debugLogger.info(debugMessagePrefix + "Look for x264 files in segment");
+                    var node = window.$(window.$.find('tr:contains("x264")')).find(('a[title="Download torrent file"]'));
+                    if (node.length < 1){
+                        node = window.$.find('a[title="Download torrent file"]');
+                        debugLogger.info(debugMessagePrefix + "No x264 torrents found in page");
+                        if(node.length < 1){
+                            debugLogger.info(debugMessagePrefix + "No torrents found - rejecting defer obj");
+                            finishedRequest.reject("No torrents found");
+                            return;
+                        }
+                    }
+                    var nodeUrl = node[0].href;
+                    finishedRequest.resolve(nodeUrl);
+                }
+            );
+        }
+        else{
+            errorLogger.error("requestEpisodeSegment - request - " + error);
+            finishedRequest.reject();
+        }
+    });
+
+    //do it next
+    finishedRequestPromise.then(function(nodeUrl){
+        debugLogger.info(debugMessagePrefix + "Download file from: " + nodeUrl);
+        downloadFile(nodeUrl, episode.name, episode.deferred);
+    }, function(reason){
+        errorLogger.error(reason);
+        episode.deferred.reject(reason);
+    }, function(){});  //.then(onFulfilled, onRejected, onProgress)
+}
+
 /********************Set some tasks for later *******************/
 var agenda = new Agenda({db: { address: 'localhost:27017/agendaJobs'}});
 
@@ -234,9 +339,50 @@ agenda.define('today shows',function(job,done){
         },
         //go get the torrent files urls
         function(urls, callback){
+            var promises = [];
             _.each(urls,function(url){
-                console.log(url)
+                console.log(url);
+                var deferred = Q.defer();
+                promises.push(deferred.promise);
+                url.deferred = deferred;
+                requestSeriesPage(url);
             });
+
+            Q.allSettled(promises).spread(function(){
+                var args = arguments;
+                var sucessFiles = [];
+                var failoureFiles = [];
+                var mailSubject = "";
+                var mailBody = "";
+                var successString = "Success: \n";
+                var failureString = "Failure: \n";
+                for(var i=0; i<args.length; i++){
+                    var promise = args[i];
+                    if(promise.state === "fulfilled"){
+                        sucessFiles.push(promise.value.filename);
+                        successString += promise.value.filename + "\n"
+                    }
+                    else{
+                        failoureFiles.push(promise.value);
+                        failureString += promise.value + "\n";
+                    }
+                }
+                if(failoureFiles.length === 0){
+                    mailSubject = sucessFiles.length + " New episodes were downloaded successfully";
+                }
+                else{
+                    mailSubject = sucessFiles.length + " New episodes were downloaded successfully and " + failoureFiles.length + " files had errors";
+                }
+                mailBody = successString + failureString;
+                debugLogger.info('Going to send email: ', mailSubject ,mailBody)
+                agenda.now('send mail',{
+                    mailBody: mailBody,
+                    mailSubject:mailSubject
+                });
+
+
+            }).done();
+
             callback(null);
         }
     ], function (err, result) {
