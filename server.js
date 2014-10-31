@@ -144,6 +144,21 @@ app.put('/api/episodes/:id', function(req, res, next){
         });
     })
 })
+app.get('/api/shows/date/:year/:month', function(req, res, next) {
+    var month = parseInt(req.params.month) - 1;
+    var year = parseInt(req.params.year);
+    var start = moment([year,month,1,0,0,0]);
+    var end = moment(start).add(1, 'month');
+    if(!start.isValid() || !end.isValid()){
+        res.status(400).send('Bad date');
+        return;
+    }
+    console.log('Look for episodes in range: ', start.toDate(), ' to ', end.toDate())
+    Episode.find({firstAired:{$gte:start.toDate(), $lt:end.toDate()}},{season:1,episodeNumber:1,watched:1,showName:1,firstAired:1},function(err, results){
+        res.status(200).send(results);
+    });
+
+});
 app.put('/api/shows/:id/season/:number', function(req, res, next){
     Episode.find({
         showId:req.params.id,
