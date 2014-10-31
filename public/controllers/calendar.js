@@ -34,7 +34,11 @@ angular.module('MyApp')
                                     if(data[index].showName == undefined){
                                         continue;
                                     }
-                                    days[i].episodes += '<p>' + data[index].showName + ' ' + data[index].season + 'x' + data[index].episodeNumber + '</p>';
+                                    var text_decoration = "none";
+                                    if(data[index].watched){
+                                        text_decoration = "line-through";
+                                    }
+                                    days[i].episodes += '<p style="text-decoration: ' + text_decoration + '">' + data[index].showName + ' ' + data[index].season + 'x' + data[index].episodeNumber + '</p>';
                                 }
                             }
                             incerDay.add(1,'day');
