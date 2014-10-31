@@ -64,6 +64,23 @@ angular.module('MyApp')
                     $scope.all = season;
                 }
 
+                $scope.isSeason = function(season){
+                    if(!isNaN(parseInt($scope.all))) return true
+                    return false;
+                }
+
+                $scope.markSeasonAsWatched = function(){
+                    if($scope.isSeason()){
+                        $http.put('/api/shows/' + show._id + '/season/' + $scope.all, {}).
+                            success(function(data, status, headers, config) {
+                                console.log(data)
+                            }).
+                            error(function(data, status, headers, config) {
+                            });
+
+                    }
+                }
+
 
             });
         }]);

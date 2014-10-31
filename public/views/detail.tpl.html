@@ -51,6 +51,9 @@
             <span ng-repeat="season in seasonsRange" style="margin-right: 10px" ><span ng-click="changeSeason(season)" >{{season}}</span></span>
         </div>
         <div class="panel-body">
+            <div class="text-center" ng-show="isSeason()" ng-click="markSeasonAsWatched()">
+                <span class="btn btn-block btn-primary">Mark season as watched</span>
+            </div>
             <div class="episode" ng-repeat="episode in show.episodes | showWatched:all">
                 <h4 style="color: {{episode.color}}">{{episode.episodeName}}
                     <small>Season {{episode.season}}, Episode {{episode.episodeNumber}}</small>
