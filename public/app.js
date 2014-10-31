@@ -26,6 +26,14 @@ angular.module('MyApp', ['ngCookies', 'ngResource', 'ngMessages', 'ngRoute', 'mg
                 templateUrl: 'views/add.tpl.html',
                 controller: 'AddCtrl'
             })
+            .when('/calendar',{
+                templateUrl: 'views/calendar.tpl.html',
+                controller: 'CalendarCtrl'
+            })
+            .when('/calendar/:year/:month',{
+                templateUrl: 'views/calendar.tpl.html',
+                controller: 'CalendarCtrl'
+            })
             .otherwise({
                 redirectTo: '/'
             });

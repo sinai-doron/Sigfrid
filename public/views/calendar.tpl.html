@@ -1,0 +1,49 @@
+<div class="jumbotron">
+    <div class="container">
+
+        <div><h2 class="text-center">{{month.format('MMMM YYYY')}}</h2></div>
+
+    </div>
+</div>
+
+
+<div class="container">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <span style="" data-match-route="/calendar/{{prevMonth.year()}}/{{prevMonth.month()+1}}"><a href="/calendar/{{prevMonth.year()}}/{{prevMonth.month()+1}}"><< {{prevMonth.format('MMMM')}}</a></span>
+            <div class="pull-right">
+                <span style="" data-match-route="/calendar/{{nextMonth.year()}}/{{nextMonth.month()+1}}"><a href="/calendar/{{nextMonth.year()}}/{{nextMonth.month()+1}}">{{nextMonth.format('MMMM')}} >></a></span>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div class="row show-list">
+                <table class="table table-bordered">
+                    <!-- On rows -->
+                    <tr class="active">
+                        <th>Sunday</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                        <th>Saturday</th>
+                    </tr>
+                    <!-- On cells (`td` or `th`) -->
+                    <tr ng-repeat="week in calendar">
+                        <td ng-repeat="day in week track by $index" ng-class="{active: day===null, success:day.today}"><h6>{{day.date}}</h6>
+                            <h6 ng-bind-html="day.episodes"></h6></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!--<td class="active">...</td>-->
+<!--<td class="success">...</td>-->
+<!--<td class="warning">...</td>-->
+<!--<td class="danger">...</td>-->
+<!--<td class="info">...</td>-->
+<!--<td class="info">...</td>-->
+<!--<td class="info">...</td>-->
