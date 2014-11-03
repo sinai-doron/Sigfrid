@@ -5,7 +5,7 @@ var Agenda = require('agenda');
 
 var options = {
     host: 'mail.sinai.mobi',
-    port: 25,
+    port: 587,
     secure:false,
     debug:true,
     auth: {
