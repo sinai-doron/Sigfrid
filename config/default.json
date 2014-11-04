@@ -2,6 +2,8 @@
  * Created by doron on 10/23/14.
  */
 {
-    "downloadFolder":"C:\\Users\\Doron Sinai\\Documents\\Template\\",
-    "downloadDays":6
+    "downloadFolder":"", //todo: make sur it ends with /
+    "downloadDays":1,
+    "updateDays":1,
+    "machineName":"defaul"
 }
