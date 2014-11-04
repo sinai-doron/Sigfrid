@@ -7,6 +7,7 @@ var request = require('request');
 var xml2js = require('xml2js');
 var winston = require('winston');
 require('./winston-config.js');
+var config = require('config');
 var debugLogger = winston.loggers.get('updaterLog');
 var errorLogger = winston.loggers.get('updaterError');
 var _ = require('lodash');
@@ -45,7 +46,8 @@ function getSeriesFromTvDb(seriesId){
 
 function updateDb(){
     var showsInDb = {};
-    var timestamp = moment().subtract(1,'days').unix();
+    var updateDays = config.get('updateDays') || 1;
+    var timestamp = moment().subtract(updateDays,'days').unix();
     var defer = Q.defer();
     Show.find({},function(err, shows){
         if(err) {
@@ -56,7 +58,7 @@ function updateDb(){
             showsInDb[show._id] = show.name;
         });
         debugLogger.info(JSON.stringify(showsInDb));
-        debugLogger.info('going to ask for changes, from: ' + timestamp + ', ' + moment.unix(timestamp).toDate());
+        debugLogger.info('going to ask for updates, from: ' +  moment.unix(timestamp).toDate() + ', ' + moment().toDate());
         request.get('http://thetvdb.com/api/Updates.php?type=all&time='+timestamp, function(error, response, body) {
             if (error) {
                 errorLogger.error(error);
@@ -93,19 +95,42 @@ function updateDb(){
                         getSeriesFromTvDb(ser).then(function(data){
                             var series = data.series;
                             var episodes = data.episodes;
-                            _.each(show.episodes,function(e){
-                                if(updatedEpisodesHash[e.episodeId])
-                                    console.log('++++++', e.episodeId, e.episodeName);
-                            });
                             _.each(episodes,function(e){
                                 var found = false;
+                                var foundEpisode = null;
                                 for(var i=0; i<show.episodes.length;i++){
                                     if(show.episodes[i].episodeId === e.id){
                                         found = true;
+                                        foundEpisode = show.episodes[i];
                                         break;
                                     }
                                 }
-                                if(!found){
+                                if(found){
+                                    if(foundEpisode !== null){
+                                        if(foundEpisode.episodeName !== e.episodename){
+                                            debugLogger.info('[' + show.name + '] - old episode name: ' + foundEpisode.episodeName + ' , new episode name: ' + e.episodename);
+                                        }
+                                        if(moment(e.firstaired).isValid() && moment(foundEpisode.firstAired).diff(moment(e.firstaired), 'days') !== 0){
+                                            debugLogger.info('[' + show.name + '] - old episode airdate: ' + moment(foundEpisode.firstAired).toDate() + ' , new episode airdate: ' + moment(e.firstaired).toDate());
+                                            debugLogger.info();
+                                        }
+                                        foundEpisode.season = e.seasonnumber;
+                                        foundEpisode.episodeNumber = e.episodenumber;
+                                        foundEpisode.episodeName = e.episodename;
+                                        foundEpisode.firstAired = e.firstaired;
+                                        foundEpisode.overview = e.overview;
+
+                                        foundEpisode.save(function(err) {
+                                            if (err) {
+                                                errorLogger.error("Error saving episode after updating " + err);
+                                            }
+                                        });
+
+                                    }else{
+                                        errorLogger.error("found episode but element was null");
+                                    }
+                                }
+                                else{
                                     console.log('------', e.id, e.episodename, show.name);
                                     var newEpisode = new Episode({
                                         episodeId: e.id,
@@ -142,93 +167,9 @@ function updateDb(){
     });
 }
 
-updateDb();
-
-
 function addUpdaterJob(agenda){
     agenda.define('update db', function(job, done) {
-        var showsInDb = {};
-        var timestamp = moment().subtract(6,'days').unix();
-        Show.find({},function(err, shows){
-            if(err) {
-                errorLogger.error(err);
-                return;
-            }
-            _.each(shows, function(show){
-                showsInDb[show._id] = 1;
-            });
-            debugLogger.info(showsInDb);
-            debugLogger.info('going to ask for changes, from: ' + timestamp + ', ' + moment.unix(timestamp).toDate());
-            request.get('http://thetvdb.com/api/Updates.php?type=series&time='+timestamp, function(error, response, body) {
-                if (error) {
-                    errorLogger.error(error);
-                    return;
-                }
-                parser.parseString(body, function(err, result) {
-                    if(err) {
-                        errorLogger.error(err);
-                        return;
-                    }
-                    _.each(result.items.series, function(series){
-                        if(showsInDb[series]){
-                            debugLogger.info('found: ' + series);
-                            request.get('http://thetvdb.com/api/' + apiKey + '/series/' + series + '/all/en.xml', function(error, response, body) {
-                                if (error) {
-                                    errorLogger.error(error);
-                                    return;
-                                }
-                                parser.parseString(body, function(err, result) {
-                                    var series = result.data.series;
-                                    var episodes = result.data.episode;
-
-                                    _.each(episodes, function(episode) {
-                                        Episode.findOne({
-                                            episodeId:episode.id
-                                        },function(err, episode1){
-                                            if(err) errorLogger.error('An error as occured: ' + err);
-                                            if(!episode1){
-                                                debugLogger.info('new episode saved'.blue);
-                                                var newEpisode = new Episode({
-                                                    episodeId: episode.id,
-                                                    showId:series.id,
-                                                    showName:series.name,
-                                                    season: episode.seasonnumber,
-                                                    episodeNumber: episode.episodenumber,
-                                                    episodeName: episode.episodename,
-                                                    firstAired: episode.firstaired,
-                                                    overview: episode.overview,
-                                                    watched: false,
-                                                    absoluteNumber:episode["absolute_number"],
-                                                    imageLocation:episode["filename"],
-                                                    thumbHeight:episode["thumb_height"],
-                                                    thumbWidth:episode["thumb_width"]
-                                                })
-                                                debugLogger.info(newEpisode.episodeId + ' ' + newEpisode.episodeName);
-                                                newEpisode.save(function(err,episode) {
-                                                    Show.findById(series.id,function(err, show){
-                                                        show.episodes.push(episode._id);
-                                                        show.save(function(){})
-                                                    });
-                                                    if (err) {
-                                                        errorLogger.error(err);
-                                                    }
-                                                });
-                                            }
-                                            else{
-                                                //console.log('episode: '+episode.id + ' found in db')
-                                            }
-                                        })
-
-                                    });
-                                });
-                            });
-                        }
-                    })
-
-
-                });
-            });
-        })
+        updateDb();
         done()
 
     });
