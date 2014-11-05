@@ -10,6 +10,7 @@ var passport = require('passport');
 var bodyParser = require('body-parser');
 var async = require('async');
 var request = require('request');
+var config = require("config");
 var xml2js = require('xml2js');
 var _ = require('lodash');
 //compression
@@ -25,7 +26,7 @@ var cookieConfig = 	{
         signed: true
 };
 
-var apiKey = '94110B1EA4F695E8'; //API key from the tv db
+var apiKey = config.get("apiKey"); //API key for the tv db
 var parser = xml2js.Parser({
     explicitArray: false,
     normalizeTags: true

@@ -1,47 +1,38 @@
 /**
  * Created by doron on 10/28/14.
  */
-var Q = require('q');
-var d1 = Q.defer();
-var d2 = Q.defer();
-var d3 = Q.defer();
-var d4 = Q.defer();
-
-var a = [d1.promise, d2.promise, d3.promise ,d4.promise];
-
-Q.allSettled(a).spread(function(){
-    console.log(arguments);
-    for(var i=0;i<arguments.length;i++){
-        console.log(arguments[i])
-    }
-}).done();
-
-d1.resolve("d1");
-d2.resolve("d2");
-d3.reject("reject d3");
-d4.resolve("d4");
 
 var nodemailer = require('nodemailer');
 var smtpTransport = require('nodemailer-smtp-transport');
+var config = require('config');
 
-var options = {
-    host: 'mail.sinai.mobi',
-    port: 25,
-    secure:false,
-    debug:true,
-    auth: {
-        user: 'tv@sinai.mobi',
-        pass: 'Iamtvserver1'
-    }
-}
-
+var options = JSON.stringify(config.get("emailConfiguration"));
+console.log(options);
+options = JSON.parse(options);
+console.log(options);
 var transporter = nodemailer.createTransport(smtpTransport(options))
 
+
+        var emails = config.get("emails");
+        var to = "";
+        if(emails instanceof Array){
+            for(var i=0; i < emails.length; i++){
+                to += emails[i];
+                if(i != (emails.length-1))
+                    to += ',';
+            }
+        }
+        else{
+            to = emails;
+        }
+
+        console.log('Going to send mail');
+        console.log(to);
         transporter.sendMail({
-            from: 'tv@sinai.mobi',
-            to: 'sinai.doron@gmail.com',
-            subject: "l",
-            text: "k"
+            from: options.auth.user,
+            to: to,
+            subject: "still a test",
+            text: "test"
         }, function (err, info) {
             console.log(err);
             console.log(info);

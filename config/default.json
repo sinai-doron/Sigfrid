@@ -6,6 +6,7 @@
     "downloadDays":1,
     "updateDays":1,
     "machineName":"defaul",
+    "apiKey":"",
     "emails":"",
     "emailConfiguration":{
         "host": "",

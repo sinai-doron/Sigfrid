@@ -17,7 +17,7 @@ var parser = xml2js.Parser({
     normalizeTags: true
 });
 require('./db.js')
-var apiKey = '94110B1EA4F695E8'; //API key from the tv db
+var apiKey = config.get("apiKey"); //API key for the tv db
 var User = mongoose.model('User');
 var Show = mongoose.model('Show');
 var Episode = mongoose.model('Episode');
