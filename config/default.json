@@ -5,5 +5,16 @@
     "downloadFolder":"", //todo: make sur it ends with /
     "downloadDays":1,
     "updateDays":1,
-    "machineName":"defaul"
+    "machineName":"defaul",
+    "emails":"",
+    "emailConfiguration":{
+        "host": "",
+        "port": 587 ,
+        "secure":false,
+        "debug":true,
+        "auth": {
+            "user": "",
+            "pass": ""
+        }
+    }
 }
