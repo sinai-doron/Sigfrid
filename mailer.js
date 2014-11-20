@@ -1,37 +1,53 @@
 var nodemailer = require('nodemailer');
 var smtpTransport = require('nodemailer-smtp-transport');
 var moment = require('moment');
-var Agenda = require('agenda');
+var config = require('config');
+var winston = require('winston');
+require('./winston-config.js');
+var debugLogger = winston.loggers.get('all');
+var errorLogger = winston.loggers.get('terror');
 
-var options = {
-    host: 'mail.sinai.mobi',
-    port: 587 ,
-    secure:false,
-    debug:true,
-    auth: {
-        user: 'tv@sinai.mobi',
-        pass: 'Iamtvserver1'
-    }
-}
+var options = JSON.stringify(config.get("emailConfiguration"));
+options = JSON.parse(options);
 
 var transporter = nodemailer.createTransport(smtpTransport(options))
 
-function sendMail(agenda){
+function sendMail(mailData){
+    var emails = config.get("emails");
+    var to = "";
+    if(emails instanceof Array){
+        for(var i=0; i < emails.length; i++){
+            to += emails[i];
+            if(i != (emails.length-1))
+                to += ',';
+        }
+    }
+    else{
+        to = emails;
+    }
+
+    debugLogger.info('Going to send mail to: ' ,to);
+    transporter.sendMail({
+        from: options.auth.user,
+        to: to,
+        subject: mailData.subject,
+        text: mailData.text
+    }, function (err, info) {
+        if(err) errorLogger
+        else debugLogger.info(info)
+    });
+}
+
+function sendMailJob(agenda){
     agenda.define('send mail',function(job,done) {
-        console.log('Going to send mail');
-        console.log(job.attrs.data.mailBody);
-        transporter.sendMail({
-            from: 'tv@sinai.mobi',
-            to: 'sinai.doron@gmail.com',
+        var mailData = {
             subject: job.attrs.data.mailSubject,
             text: job.attrs.data.mailBody
-        }, function (err, info) {
-            console.log(err);
-            console.log(info);
-        });
+        }
+        sendMail(mailData);
         done();
     });
 }
 
 
-module.exports = sendMail;
+module.exports = sendMailJob;
