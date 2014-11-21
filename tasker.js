@@ -122,7 +122,10 @@ function requestSeriesPage(url){
                         finishedRequest.reject("JSDOM error - see logs");
                         return;
                     }
-                    var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode 0' + url.number + '")').parent().attr("onClick");
+                    if(url.number < 10){
+                        url.number = '0' + url.number;
+                    }
+                    var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode ' + url.number + '")').parent().attr("onClick");
                     if(node && node.length > 1){
                         var episodeUrlTorrent = node.split('\'')[1];
                         if(episodeUrlTorrent){
