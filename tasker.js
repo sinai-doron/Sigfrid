@@ -125,7 +125,10 @@ function requestSeriesPage(url){
                     if(url.number < 10){
                         url.number = '0' + url.number;
                     }
-                    var node = window.$(window.$.find('h3:contains("Season 0' + url.season + '")')).next('div').find('span:contains("Episode ' + url.number + '")').parent().attr("onClick");
+                    if(url.season < 10){
+                        url.season = '0' + url.season;
+                    }
+                    var node = window.$(window.$.find('h3:contains("Season ' + url.season + '")')).next('div').find('span:contains("Episode ' + url.number + '")').parent().attr("onClick");
                     if(node && node.length > 1){
                         var episodeUrlTorrent = node.split('\'')[1];
                         if(episodeUrlTorrent){
