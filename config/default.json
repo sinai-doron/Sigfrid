@@ -5,7 +5,7 @@
     "downloadFolder":"", //todo: make sur it ends with /
     "downloadDays":1,
     "updateDays":1,
-    "machineName":"defaul",
+    "machineName":"default",
     "apiKey":"",
     "emails":"",
     "emailConfiguration":{

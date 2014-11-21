@@ -58,3 +58,17 @@ winston.loggers.add('updaterError', {
     }
 
 });
+
+winston.loggers.add('modulesLogger', {
+    console: {
+        level: 'debug',
+        colorize: 'true',
+        label: 'Modules'
+    },
+    file: {
+        level:'debug',
+        filename: 'logs/modulesLogger.log',
+        json:false
+    }
+
+});
