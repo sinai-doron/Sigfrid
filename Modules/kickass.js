@@ -40,7 +40,10 @@ function requestSeriesPage(show){
                             return;
                         }
                         _.each(show.episodes,function(e){
-                            var node = window.$(window.$.find('h3:contains("Season 0' + e.season + '")')).next('div').find('span:contains("Episode 0' + e.number + '")').parent().attr("onClick");
+                            if(e.number < 10){
+                                e.number = '0' + e.number;
+                            }
+                            var node = window.$(window.$.find('h3:contains("Season 0' + e.season + '")')).next('div').find('span:contains("Episode ' + e.number + '")').parent().attr("onClick");
                             if(node && node.length > 1){
                                 var episodeUrlTorrent = node.split('\'')[1];
                                 if(episodeUrlTorrent){
@@ -172,5 +175,7 @@ function getTorrentFilesLinks(episodes){
 }
 
 module.exports = {
-    getTorrentFilesLinks:getTorrentFilesLinks
+    getTorrentFilesLinks:getTorrentFilesLinks,
+    requestSeriesPage:requestSeriesPage,
+    requestEpisodeSegment:requestEpisodeSegment
 }

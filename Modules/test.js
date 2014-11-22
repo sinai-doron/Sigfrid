@@ -27,8 +27,8 @@ var episodeQuery = Episode.find({firstAired:{$gte:start, $lt:end}});
 //281630
 
 //step 1 - get the episodes you want from the DB
-//var deferEpisodes = shows.getEpisodesForShowDaysBack(281630, 90, shows.getShowUrl);
-var deferEpisodes = shows.getEpisodesByDateRange(start, end, shows.getShowUrl);
+var deferEpisodes = shows.getEpisodesForShowDaysBack(80379, 2, shows.getShowUrl);
+//var deferEpisodes = shows.getEpisodesByDateRange(start, end, shows.getShowUrl);
 deferEpisodes.then(function(results){
     kickass.getTorrentFilesLinks(results).then(function(values){
         console.log('we got ome:')
