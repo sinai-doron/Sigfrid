@@ -35,9 +35,21 @@ function getSeriesFromTvDb(seriesId){
             if (err){
                 defer.reject("parser error");
             }
-            var series = result.data.series;
-            var episodes = result.data.episode;
-            defer.resolve({series:series, episodes:episodes})
+            if(result){
+                if(result.data){
+                    var series = result.data.series;
+                    var episodes = result.data.episode;
+                    defer.resolve({series:series, episodes:episodes})
+                }
+                else{
+                    errorLogger.error("No result.data" + result);
+                    defer.reject("No result.data");
+                }
+            }
+            else{
+                errorLogger.error("No result");
+                defer.reject("No result");
+            }
         })
     });
 
