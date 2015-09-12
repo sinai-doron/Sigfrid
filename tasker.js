@@ -13,6 +13,7 @@ var jsdom = require("jsdom").jsdom;
 var config = require('config');
 var Q = require('q');
 var downloadFolder = config.get('downloadFolder');
+var mkdirp = require("mkdirp");
 var winston = require('winston');
 require('./winston-config.js');
 require("./db.js");
@@ -53,7 +54,8 @@ function downloadFile(url, folder, defer){
         url:url,
         gzip:true,
         headers: {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Referer":url
         }
     }).on('response', function(res){
         var path = res.request.uri.path.split('/');
@@ -69,30 +71,33 @@ function downloadFile(url, folder, defer){
             var buffer = Buffer.concat(ret, len);
             var encoding = res.headers['content-encoding'];
             var folderName = downloadFolder + folder + '/';
-            if(!checkAndCreateFolder(folderName)){
-                errorLogger.error('Can not create folders');
-                defer.reject("Error creating folders");
-                return;
-            }
-            var wstream = fs.createWriteStream(folderName + fileName);
-            if (encoding == 'gzip') {
-                zlib.gunzip(buffer, function(err, decoded) {
-                    wstream.write(decoded);
+            mkdirp(folderName,function(err){
+                if(err){
+                    errorLogger.error('Can not create folders');
+                    defer.reject("Error creating folders");
+                    return;
+                }
+                var wstream = fs.createWriteStream(folderName + fileName);
+                if (encoding == 'gzip') {
+                    zlib.gunzip(buffer, function(err, decoded) {
+                        wstream.write(decoded);
+                        wstream.end();
+                    });
+                } else if (encoding == 'deflate') {
+                    zlib.inflate(buffer, function(err, decoded) {
+                        wstream.write(decoded);
+                        wstream.end();
+                    })
+                } else {
+                    wstream.write(buffer.toString());
                     wstream.end();
+                }
+                defer.resolve({
+                    status:"sucess",
+                    filename:fileName
                 });
-            } else if (encoding == 'deflate') {
-                zlib.inflate(buffer, function(err, decoded) {
-                    wstream.write(decoded);
-                    wstream.end();
-                })
-            } else {
-                wstream.write(buffer.toString());
-                wstream.end();
-            }
-            defer.resolve({
-                status:"sucess",
-                filename:fileName
-            })
+            });
+
         });
     }).on('error', function(err) {
         errorLogger.error('Error while trying to save file ' + err);
@@ -204,13 +209,62 @@ function requestEpisodeSegment(episode){
     //do it next
     finishedRequestPromise.then(function(nodeUrl){
         debugLogger.info(debugMessagePrefix + "Download file from: " + nodeUrl);
-        downloadFile(nodeUrl, episode.name, episode.deferred);
+        getUelFromTorrentCache(nodeUrl, episode);
     }, function(reason){
         errorLogger.error(reason);
         episode.deferred.reject(reason);
     }, function(){});  //.then(onFulfilled, onRejected, onProgress)
 }
 
+function getUelFromTorrentCache(url,episode){
+    var debugMessagePrefix = "Get torrent file from torrentCache ";
+    var finishedRequest = Q.defer();
+    var finishedRequestPromise = finishedRequest.promise;
+    request({
+        url: url,
+        gzip:true
+    },  function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+            jsdom.env(
+                body,
+                ["./jquery-2.1.1.min.js"],
+                function (errors, window) {
+                    if(errors) {
+                        errorLogger.error("requestEpisodeSegment - jsdom - " + errors);
+                        finishedRequest.reject("JSDOM error - see logs");
+                        return;
+                    }
+                    debugLogger.info(debugMessagePrefix + "Look for torrent phrase");
+                    var node = window.$.find('a:contains("torrent file")');
+                    var fileUrl = null;
+                    node.length > 0 ? fileUrl = window.$.find('a:contains("torrent file")')[0].href : fileUrl = null;
+                    if(fileUrl === null){
+                        finishedRequest.reject("Did not find url for file");
+                        return;
+                    }
+                    var splittedUrl = fileUrl.split("/");
+                    splittedUrl.pop();
+                    fileUrl = splittedUrl.join("/");
+                    console.log('^^^^^^^', fileUrl);
+                    finishedRequest.resolve(fileUrl+".torrent");
+                }
+            );
+        }
+        else{
+            errorLogger.error("requestEpisodeSegment - request - " + error);
+            finishedRequest.reject("response.statusCode: " + response.statusCode);
+        }
+    });
+
+    //do it next
+    finishedRequestPromise.then(function(nodeUrl){
+        debugLogger.info(debugMessagePrefix + "Download file from: " + nodeUrl);
+        downloadFile(nodeUrl, episode.name, episode.deferred);
+    }, function(reason){
+        errorLogger.error(reason);
+        episode.deferred.reject(reason);
+    }, function(){});  //.then(onFulfilled, onRejected, onProgress)
+}
 /********************Set some tasks for later *******************/
 var agenda = new Agenda({db: { address: 'localhost:27017/agendaJobs'}});
 
