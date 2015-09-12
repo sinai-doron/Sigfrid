@@ -44,7 +44,7 @@ function checkAndCreateFolder(folder){
     }
 }
 
-function downloadFile(url, folder, defer){
+function downloadFile(url, folder, defer, fileName){
     var ret = [];
     var len = 0;
     var zlib = require("zlib");
@@ -59,7 +59,7 @@ function downloadFile(url, folder, defer){
         }
     }).on('response', function(res){
         var path = res.request.uri.path.split('/');
-        var fileName = path[path.length-1];
+
         debugLogger.info('Giving it this filename: ' + fileName);
 
         res.on('data', function (data) {
@@ -219,6 +219,7 @@ function requestEpisodeSegment(episode){
 function getUelFromTorrentCache(url,episode){
     var debugMessagePrefix = "Get torrent file from torrentCache ";
     var finishedRequest = Q.defer();
+    var fileName;
     var finishedRequestPromise = finishedRequest.promise;
     request({
         url: url,
@@ -243,9 +244,8 @@ function getUelFromTorrentCache(url,episode){
                         return;
                     }
                     var splittedUrl = fileUrl.split("/");
-                    splittedUrl.pop();
+                    fileName = splittedUrl.pop();
                     fileUrl = splittedUrl.join("/");
-                    console.log('^^^^^^^', fileUrl);
                     finishedRequest.resolve(fileUrl+".torrent");
                 }
             );
@@ -259,7 +259,7 @@ function getUelFromTorrentCache(url,episode){
     //do it next
     finishedRequestPromise.then(function(nodeUrl){
         debugLogger.info(debugMessagePrefix + "Download file from: " + nodeUrl);
-        downloadFile(nodeUrl, episode.name, episode.deferred);
+        downloadFile(nodeUrl, episode.name, episode.deferred, fileName);
     }, function(reason){
         errorLogger.error(reason);
         episode.deferred.reject(reason);
