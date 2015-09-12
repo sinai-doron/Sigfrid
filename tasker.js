@@ -245,6 +245,7 @@ function getUelFromTorrentCache(url,episode){
                     }
                     var splittedUrl = fileUrl.split("/");
                     fileName = splittedUrl.pop();
+                    fileName = fileName.replace('%5B','[').replace('%5D',']');
                     fileUrl = splittedUrl.join("/");
                     finishedRequest.resolve(fileUrl+".torrent");
                 }
